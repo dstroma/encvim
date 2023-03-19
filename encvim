@@ -60,5 +60,7 @@ if (!$file_is_new and `md5 $tmp_filename` eq $md5_original) {
 	} while ($result != 0 and $try_again);
 }
 
-`rm $tmp_filename`;
+unless (system(qq|rm $tmp_filename|) == 0) {
+	print "Could not remove tempfile $tmp_filename\n";
+}
 
