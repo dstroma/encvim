@@ -2,6 +2,14 @@
 use strict;
 use warnings;
 
+sub prompt {
+	my $input = shift;
+	print $input;
+	my $resp = <STDIN>;
+	chomp $resp;
+	return $resp;
+}
+
 my $arg = $ARGV[0];
 unless ($arg) {
 	die "Usage: encvim [filename]\n";
@@ -11,37 +19,45 @@ unless ($arg) {
 my $enc_filename = $arg;
 my $tmp_filename = '.' . $arg . '.tmp';
 my $md5_original;
+my $file_is_new;
 
 if (-e $enc_filename) {
 	# Decrypt, calculate hash
 	my $result = system qq|openssl enc -d -aes-256-cbc -in "$enc_filename" -out "$tmp_filename"|;
 	unless ($result == 0) {
-		print "Call to openssl returned with error code $result. Operation canceled.\n";
+		print "Call to openssl returned with error code $result\n";
+		print "Decrypt failed.\n";
+		print "Operation canceled.\n";
 		exit -1;
 	}
 	$md5_original = `md5 $tmp_filename`;
 } else {
-	print "File $enc_filename does not exist. Create it? [Y/N] ";
-	my $resp = <STDIN>;
-	chomp $resp;
-	$resp = uc $resp;
-	unless ($resp eq 'Y') {
+	my $resp = prompt "File $enc_filename does not exist. Create it? [Y/N] ";
+	unless (uc $resp eq 'Y') {
 		print "Operation canceled.\n";
 		exit 0;
 	}
+	$file_is_new = 1;
 }
 
 # Open
 system("vim $tmp_filename");
 
 # Encrypt and delete decrypted
-if (`md5 $tmp_filename` eq $md5_original) {
+if (!$file_is_new and `md5 $tmp_filename` eq $md5_original) {
 	print "No changes.\n";
 } else {
-	my $result = system qq|openssl enc -aes-256-cbc -salt -in "$tmp_filename" -out "$enc_filename"|;
-	unless ($result == 0) {
-		print "Call to openssl returned with error code $result. Unable to encrypt. Changes lost.\n";
-	}
+	my $result;
+	my $try_again;
+	do {
+		$result = system qq|openssl enc -aes-256-cbc -salt -in "$tmp_filename" -out "$enc_filename"|;
+		unless ($result == 0) {
+			print "Call to openssl returned with error code $result.\n";
+			print "Encrypt failed.\n";
+			my $resp = prompt "[T]ry again? ";
+			$try_again = uc $resp eq 'T';
+		}
+	} while ($result != 0 and $try_again);
 }
 
 `rm $tmp_filename`;
