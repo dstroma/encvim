@@ -3,8 +3,7 @@ use strict;
 use warnings;
 
 sub prompt {
-	my $input = shift;
-	print $input;
+	print for @_;
 	my $resp = <STDIN>;
 	chomp $resp;
 	return $resp;
