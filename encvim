@@ -12,7 +12,6 @@ sub prompt {
 my $arg = $ARGV[0];
 unless ($arg) {
 	die "Usage: encvim [filename]\n";
-	exit 0;
 }
 
 my $enc_filename = $arg;
@@ -43,8 +42,15 @@ if (-e $enc_filename) {
 system("vim $tmp_filename");
 
 # Encrypt and delete decrypted
-if (!$file_is_new and `md5 $tmp_filename` eq $md5_original) {
+if ($file_is_new and not -e $tmp_filename) {
+	print "New file not saved. Nothing to do.\n";
+	exit 0;
+} elsif (not -e $tmp_filename) {
+	print "Error, tempfile missing.\n";
+	exit -1;
+} elsif (!$file_is_new and `md5 $tmp_filename` eq $md5_original) {
 	print "No changes.\n";
+	exit 0;
 } else {
 	my $result;
 	my $try_again;
@@ -62,4 +68,7 @@ if (!$file_is_new and `md5 $tmp_filename` eq $md5_original) {
 unless (system(qq|rm $tmp_filename|) == 0) {
 	print "Could not remove tempfile $tmp_filename\n";
 }
+
+exit 0;
+
 
